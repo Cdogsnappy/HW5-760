@@ -14,8 +14,6 @@ def pca(components, hyper_comp, demeaned=False, normalized=False):
 
     S, K, U = np.linalg.svd(components)
     trans_comp = U[:hyper_comp]
-    var = np.sum(K[:hyper_comp]) / np.sum(K)
-    # print("explained variance: " + str(var))
 
     return np.dot(components, trans_comp.T), trans_comp, mean, st_norm
 

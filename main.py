@@ -1,7 +1,7 @@
 import math
 import numpy as np
-from scipy.stats import norm
 from scipy.stats import multivariate_normal
+from sklearn.mixture import GaussianMixture
 import matplotlib.pyplot as plt
 
 iter = 100
@@ -9,6 +9,13 @@ P_a = ([-1, -1], [[1, .5], [.5, 1]])
 P_b = ([1, -1], [[1, -.5], [-.5, 2]])
 P_c = ([0, 1], [[1, 0], [0, 2]])
 reg_term = 1e-6 * np.identity(2)
+
+
+def pdf(data, mean, variance):
+    # A normal continuous random variable.
+    s1 = 1 / (np.sqrt(2 * np.pi * variance))
+    s2 = np.exp(-(np.square(data - mean) / (2 * variance)))
+    return s1 * s2
 
 
 def gmm(X):
@@ -36,6 +43,7 @@ def gmm(X):
         cov.append(((1 / mu_val) * np.dot((np.array(r_ic[:, c]).reshape(len(X), 1) * (X - new_mean)).T,
                                           (X - new_mean))) + reg_term)
         pi.append(mu_val / np.sum(r_ic))
+    return means, cov
 
 
     # generate the dataset
@@ -53,7 +61,7 @@ def k_means(X, num_clusters):
         for i in range(num_clusters - 1):
             dist = np.zeros((len(clusters), len(X)))
             for j in range(len(clusters)):
-                dist[j,:] = np.linalg.norm(X - clusters[j], axis=1)
+                dist[j, :] = np.linalg.norm(X - clusters[j], axis=1)
             for x, y in zip(X, np.argmin(dist, axis=0)):
                 cluster_classes[y].append(x)
         for val in range(len(clusters)):
@@ -91,6 +99,8 @@ def q1_2():
 sig = [.5, 1, 2, 4, 8]
 tot_loss = []
 acc = []
+log_loss = []
+gmm_acc = []
 base_means = [P_a[0], P_b[0], P_c[0]]
 for s in sig:
 
@@ -100,24 +110,52 @@ for s in sig:
     X = np.append(a, b, 0)
     X = np.append(X, c, 0)
     X = np.array(X)
+    gmm = GaussianMixture(n_components=3)
+    gmm.fit(X)
+    log_loss.append(gmm.lower_bound_)
+    idx = []
+    for g in gmm.means_:
+        diff = np.linalg.norm((base_means - g), axis=-1)
+        idx.append(np.argmin(diff, axis=0))
+    corrected_classes = []
+    for i in idx:
+        corrected_classes.append(gmm.means_[i])
+    gmm.means_ = np.copy(corrected_classes)
+    gmm_acc.append(np.count_nonzero(gmm.predict(a) == 0) + np.count_nonzero(gmm.predict(b) == 1) + np.count_nonzero(gmm.predict(c) == 2))
     loss, classes, clusters, = k_means(X, 3)
     tot_loss.append(loss)
     idx = []
     for g in clusters:
-        diff = np.linalg.norm((base_means - g))
+        diff = np.linalg.norm((base_means - g), axis=-1)
         idx.append(np.argmin(diff, axis=0))
-    classes[:] = [classes[i] for i in idx]  # Reordered classes
+    corrected_classes = []
+    for i in idx:
+        corrected_classes.append(classes[i])
     correct = 0
     for a_i, b_i, c_i in zip(a, b, c):
-        if (classes[0] == a_i).any(): correct += 1
-        if (classes[1] == b_i).any(): correct += 1
-        if (classes[2] == c_i).any(): correct += 1
+        if (corrected_classes[0] == a_i).any(): correct += 1
+        if (corrected_classes[1] == b_i).any(): correct += 1
+        if (corrected_classes[2] == c_i).any(): correct += 1
     acc.append(correct / 300)
+print(gmm_acc)
+print()
 plt.plot(sig, tot_loss)
 plt.xlabel("sigma")
 plt.ylabel("loss")
+plt.title("Loss Over Sigma")
 plt.show()
 plt.plot(sig, acc)
 plt.xlabel("sigma")
 plt.ylabel("accuracy")
+plt.title("Accuracy Over Sigma")
+plt.show()
+plt.plot(sig, log_loss)
+plt.xlabel("sigma")
+plt.ylabel("loss")
+plt.title("Loss Over Sigma (GMM)")
+plt.show()
+plt.plot(sig, gmm_acc)
+plt.xlabel("sigma")
+plt.ylabel("accuracy")
+plt.title("Accuracy Over Sigma (GMM)")
 plt.show()
