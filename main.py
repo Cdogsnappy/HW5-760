@@ -37,6 +37,7 @@ def gmm(X):
                                           (X - new_mean))) + reg_term)
         pi.append(mu_val / np.sum(r_ic))
 
+
     # generate the dataset
 
 
@@ -56,7 +57,7 @@ def k_means(X, num_clusters):
             for x, y in zip(X, np.argmin(dist, axis=0)):
                 cluster_classes[y].append(x)
         for val in range(len(clusters)):
-            clusters[val] = np.sum(cluster_classes[val]) / len(cluster_classes[val])
+            clusters[val] = np.sum(cluster_classes[val], axis=0) / len(cluster_classes[val])
         prev_loss = loss
         loss = 0
         for f in range(len(cluster_classes)):
@@ -108,9 +109,9 @@ for s in sig:
     classes[:] = [classes[i] for i in idx]  # Reordered classes
     correct = 0
     for a_i, b_i, c_i in zip(a, b, c):
-        if classes[0].count(a_i) > 0: correct += 1
-        if classes[1].count(b_i) > 0: correct += 1
-        if classes[2].count(c_i) > 0: correct += 1
+        if (classes[0] == a_i).any(): correct += 1
+        if (classes[1] == b_i).any(): correct += 1
+        if (classes[2] == c_i).any(): correct += 1
     acc.append(correct / 300)
 plt.plot(sig, tot_loss)
 plt.xlabel("sigma")
